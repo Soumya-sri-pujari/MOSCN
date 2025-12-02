@@ -1,0 +1,77 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define SIM_TIME 20.0      // seconds
+#define RTT 0.05           // 50ms
+#define MSS 1.0            // normalized MSS
+
+// Simulate TCP Reno for given loss probability
+double simulate_tcp_reno(double loss_prob) {
+    double t = 0.0;
+    double cwnd = 1.0;
+    double ssthresh = 64.0;
+    double bytes_acked = 0.0;
+
+    while (t < SIM_TIME) {
+
+        int segs = (int)(cwnd / MSS);
+        if (segs < 1) segs = 1;
+
+        int loss = 0;
+        int acks = 0;
+
+        // Simulate sending packets
+        for (int i = 0; i < segs; i++) {
+            double r = (double)rand() / RAND_MAX;
+            if (r < loss_prob)
+                loss = 1;
+            else
+                acks++;
+        }
+
+        bytes_acked += acks * MSS;
+
+        // Update TCP Reno state
+if (loss) {
+    ssthresh = cwnd / 2.0;
+    if (ssthresh < 2.0) ssthresh = 2.0;
+    cwnd = cwnd / 2.0;
+    if (cwnd < 1.0) cwnd = 1.0;
+} else {
+    if (cwnd < ssthresh) {
+        cwnd = cwnd * 2.0;    // slow start
+    } else {
+        cwnd = cwnd + 1.0;    // congestion avoidance
+    }
+}
+
+if (cwnd > 1000.0) cwnd = 1000.0;
+
+t += RTT;
+}
+
+return bytes_acked / SIM_TIME;   // throughput in MSS/s
+}
+
+
+
+int main() {
+    srand(time(NULL));
+
+    double loss_rates[3] = {0.001, 0.01, 0.02};
+    char *labels[3] = {"0.1%", "1%", "2%"};
+
+    printf("TCP Reno Simulation (C Program)\n");
+    printf("-------------------------------\n");
+
+    for (int i = 0; i < 3; i++) {
+        double thr = simulate_tcp_reno(loss_rates[i]);
+        printf("Loss %s (%f): Throughput = %.2f MSS/s\n",
+               labels[i], loss_rates[i], thr);
+    }
+
+    return 0;
+}
+
+z
